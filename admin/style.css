@@ -1,0 +1,48 @@
+.admin-tooltip {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+.admin-tooltip input[type="number"] {
+    width: 100%;
+}
+.admin-tooltip-btns {
+    display: flex;
+    justify-content: space-between;
+}
+.admin-tooltip .button-danger {
+    background: #dc3545!important;
+    border: #dc3545;
+    color: #fff;
+}
+.admin-tooltip .button-danger:hover {
+    color: #fff;
+}
+/* #the-list tr:hover .inventory.column-inventory span::after{
+    content: 'Edit';
+    margin-left: 10px;
+    color: #2271B1 ;
+} */
+
+.inventory-update-search-form {
+    text-align: right;
+    margin: 15px 0; 
+}
+.woocommerce_variation .form-row[data-id^="physical_variation_inventory"] {
+    display: none;
+}
+form.shop-inventory-form input[type='submit'] {
+    float: left;
+    margin-top: 10px;
+}
+.shop-inventory-table-pagination {
+    float: right;
+    clear: none;
+}
+.shop-inventory-table-pagination .button {
+    margin: 0 2px !important;
+}
+.shop-inventory-body td div input {
+    margin: 5px 0;
+}
