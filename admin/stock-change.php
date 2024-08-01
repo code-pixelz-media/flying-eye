@@ -273,7 +273,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     $physical_stock = (int)$physical_stock;
                     $new_physical_stock = max(0, $physical_stock + $quantity); // Ensure stock doesn't go below 0
                     update_post_meta($variation_id, "_physical_variation_inventory", $new_physical_stock);
-                    
+
                     $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
                     $new_physical_inventory = max(0, $_physical_inventory + $quantity);
                     update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
@@ -342,3 +342,63 @@ function filter_woocommerce_can_reduce_order_stock($can_reduce_stock, $order)
 
     return $can_reduce_stock; // Allow WooCommerce to handle stock reduction for the chosen statuses
 }
+
+
+function custom_refund_and_update_inventory($order_id, $refund_id)
+{
+    // Get the refund object
+    $refund = wc_get_order($refund_id);
+
+    // Loop through each refunded item
+    foreach ($refund->get_items() as $item_id => $item) {
+        // Get the product ID
+        $product_id = $item->get_product_id();
+        $product = wc_get_product($product_id);
+
+        // Get the quantity refunded
+        $quantity_refunded = $item->get_quantity();
+
+        if ($product->is_type('simple')) {
+            $quantity_refunded = -$quantity_refunded;
+            $physical_stock = get_post_meta($product_id, "_physical_stock", true);
+            $virtual_stock = get_post_meta($product_id, "_virtual_stock", true);
+
+            // Update the physical stock quantity
+            $new_physical_stock = (int)$physical_stock + $quantity_refunded;
+            update_post_meta($product_id, '_physical_stock', $new_physical_stock);
+
+            // Update the virtual stock quantity
+            $new_virtual_stock = (int)$virtual_stock + $quantity_refunded;
+            update_post_meta($product_id, '_virtual_stock', $new_virtual_stock);
+
+            // Update the total stock quantity
+            update_post_meta($product_id, '_stock', $new_virtual_stock);
+
+        } elseif ($product->is_type('variable')) {
+            $quantity_refunded = -$quantity_refunded;
+            $variation_id = $item->get_variation_id();
+            
+            // Get the current stock levels for the variation
+            $_virtual_variation_inventory = get_post_meta($variation_id, '_virtual_variation_inventory', true);
+            $_physical_variation_inventory = get_post_meta($variation_id, '_physical_variation_inventory', true);
+
+            // Update the virtual variation inventory
+            $new_virtual_inventory = max(0, (int)$_virtual_variation_inventory + $quantity_refunded);
+            update_post_meta($variation_id, '_virtual_variation_inventory', $new_virtual_inventory);
+
+            // Update the physical variation inventory
+            $new_physical_inventory = max(0, (int)$_physical_variation_inventory + $quantity_refunded);
+            update_post_meta($variation_id, '_physical_variation_inventory', $new_physical_inventory);
+
+            // Update the total stock for the variation
+            update_post_meta($variation_id, '_stock', $new_virtual_inventory);
+
+            // Update the parent product's physical stock
+            $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
+            $new_physical_inventory = max(0, (int)$_physical_inventory + $quantity_refunded);
+            update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
+        }
+    }
+}
+
+add_action('woocommerce_order_refunded', 'custom_refund_and_update_inventory', 10, 2);

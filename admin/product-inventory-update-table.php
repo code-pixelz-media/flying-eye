@@ -99,12 +99,10 @@ function inventory_update_page_callback()
             foreach ($_POST['inventory'] as $id => $stock) {
                 $product = wc_get_product($id);
                 $stock = intval($stock);
-                if ($stock >= 0) {
-                    if ($product && $product->is_type('variation')) {
-                        update_post_meta($id, '_physical_variation_inventory', $stock);
-                    } else {
-                        update_post_meta($id, '_physical_stock', $stock);
-                    }
+                if ($product && $product->is_type('variation')) {
+                    update_post_meta($id, '_physical_variation_inventory', $stock);
+                } else {
+                    update_post_meta($id, '_physical_stock', $stock);
                 }
             }
         }
@@ -112,22 +110,17 @@ function inventory_update_page_callback()
             foreach ($_POST['virtual_inventory'] as $id => $stock) {
                 $product = wc_get_product($id);
                 $stock = intval($stock);
-                if ($stock >= 0) {
-                    if ($product && $product->is_type('variation')) {
-                        update_post_meta($id, '_virtual_variation_inventory', $stock);
-                    } else {
-                        update_post_meta($id, '_virtual_stock', $stock);
-                    }
+                if ($product && $product->is_type('variation')) {
+                    update_post_meta($id, '_virtual_variation_inventory', $stock);
+                } else {
+                    update_post_meta($id, '_virtual_stock', $stock);
                 }
             }
         }
         if (isset($_POST['default_inventory']) && is_array($_POST['default_inventory'])) {
             foreach ($_POST['default_inventory'] as $id => $stock) {
                 $stock = intval($stock);
-                if ($stock >= 0) {
-                    // wc_update_product_stock($id, $stock);
-                    update_post_meta($id, '_stock', $stock);
-                }
+                update_post_meta($id, '_stock', $stock);
             }
         }
         echo '<div class="notice notice-success"><p>Inventory updated successfully.</p></div>';
@@ -139,28 +132,57 @@ function inventory_update_page_callback()
     // Get the current page number
     $paged = (isset($_GET['paged']) && is_numeric($_GET['paged'])) ? intval($_GET['paged']) : 1;
 
-    // Get the search query
+    // Get the search query and selected category
     $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+
+    $selected_category = isset($_GET['product_cat']) ? sanitize_text_field($_GET['product_cat']) : '';
+
+    // Add SKU search filter
+    add_filter('posts_search', 'search_by_sku', 10, 2);
 
     // Query WooCommerce products
     $args = array(
         'post_type' => 'product',
         'posts_per_page' => $products_per_page,
         'paged' => $paged,
+        's' => $search_query,
     );
 
-    // Add search term to query if set
-    if (!empty($search_query)) {
-        $args['s'] = $search_query;
+    if ($selected_category) {
+        $args['tax_query'] = array(
+            array(
+                'taxonomy' => 'product_cat',
+                'field' => 'slug',
+                'terms' => $selected_category,
+            ),
+        );
     }
-    $loop = new WP_Query($args); ?>
+
+    $loop = new WP_Query($args);
+    // Remove SKU search filter after query
+    remove_filter('posts_search', 'search_by_sku', 10); ?>
 
     <form method="get" class="inventory-update-search-form">
         <input type="hidden" name="post_type" value="product">
         <input type="hidden" name="page" value="inventory-update">
-        <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products...">
+        <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products by Title, SKU...">
+
+        <select name="product_cat">
+            <option value="">Filter by category</option>
+            <?php
+            $categories = get_terms('product_cat', array('hide_empty' => false));
+            foreach ($categories as $category) {
+                echo '<option value="' . esc_attr($category->slug) . '" ' . selected($selected_category, $category->slug, false) . '>' . esc_html($category->name) . '</option>';
+            }
+            ?>
+        </select>
+
         <input type="submit" value="Search" class="button">
     </form>
+    <div class="inventory-stock-sync">
+        <a href="javascript:void(0);" class="button" id="sync-virtual-defalut">Sync</a>
+        <a href="javascript:void(0);" class="button" id="sync-physical-virtual">Copy Physical -> Virtual</a>
+    </div>
 
     <?php if ($loop->have_posts()) { ?>
         <form method="post" class="shop-inventory-form">
@@ -198,20 +220,21 @@ function inventory_update_page_callback()
                             <td>
                                 <?php if ($product_type === 'variable') :
                                     // Input field for the whole product
-                                    $product_physical_stock = get_post_meta($product_id, '_physical_stock', true); ?>
-                                    <div>
-                                        <input type="number" name="inventory[<?php echo $product_id; ?>]" value="<?php echo $product_physical_stock; ?>">
-                                    </div>
+                                    // $product_physical_stock = get_post_meta($product_id, '_physical_stock', true); 
+                                    ?>
+                                    <!-- <div>
+                                        <input type="number" name="inventory[<?php //echo $product_id; ?>]" value="<?php //echo $product_physical_stock; ?>">
+                                    </div> -->
                                     <?php foreach ($available_variations as $variation) {
                                         $variation_id = $variation['variation_id'];
                                         $attributes = implode(', ', $variation['attributes']); ?>
                                         <div>
-                                            <input type="number" name="inventory[<?php echo $variation_id; ?>]" id="inventory_<?php echo $variation_id; ?>" value="<?php echo get_post_meta($variation_id, '_physical_variation_inventory', true); ?>" min="0">
+                                            <input type="number" name="inventory[<?php echo $variation_id; ?>]" id="inventory_<?php echo $variation_id; ?>" value="<?php echo get_post_meta($variation_id, '_physical_variation_inventory', true); ?>">
                                         </div>
                                     <?php }
 
                                 else : ?>
-                                    <input type="number" name="inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_physical_stock', true); ?>" min="0">
+                                    <input type="number" name="inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_physical_stock', true); ?>">
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -220,11 +243,11 @@ function inventory_update_page_callback()
                                         $variation_id = $variation['variation_id'];
                                         $attributes = implode(', ', $variation['attributes']); ?>
                                         <div>
-                                            <input type="number" name="default_inventory[<?php echo $variation_id; ?>]" id="default_inventory_<?php echo $variation_id; ?>" value="<?php echo intval(get_post_meta($variation_id, '_stock', true)); ?>" min="0">
+                                            <input type="number" name="default_inventory[<?php echo $variation_id; ?>]" id="default_inventory_<?php echo $variation_id; ?>" value="<?php echo intval(get_post_meta($variation_id, '_stock', true)); ?>">
                                         </div>
                                     <?php }
                                 else : ?>
-                                    <input type="number" name="default_inventory[<?php echo $product_id; ?>]" value="<?php echo $product->get_stock_quantity(); ?>" min="0">
+                                    <input type="number" name="default_inventory[<?php echo $product_id; ?>]" value="<?php echo $product->get_stock_quantity(); ?>">
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -233,11 +256,11 @@ function inventory_update_page_callback()
                                         $variation_id = $variation['variation_id'];
                                         $attributes = implode(', ', $variation['attributes']); ?>
                                         <div>
-                                            <input type="number" name="virtual_inventory[<?php echo $variation_id; ?>]" id="virtual_inventory_<?php echo $variation_id; ?>" value="<?php echo intval(get_post_meta($variation_id, '_virtual_variation_inventory', true)); ?>" min="0">
+                                            <input type="number" name="virtual_inventory[<?php echo $variation_id; ?>]" id="virtual_inventory_<?php echo $variation_id; ?>" value="<?php echo intval(get_post_meta($variation_id, '_virtual_variation_inventory', true)); ?>">
                                         </div>
                                     <?php }
                                 else : ?>
-                                    <input type="number" name="virtual_inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_virtual_stock', true); ?>" min="0">
+                                    <input type="number" name="virtual_inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_virtual_stock', true); ?>">
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -246,9 +269,7 @@ function inventory_update_page_callback()
             </table>
             <input type="submit" name="update_inventory" value="Update" class="button button-primary button-large">
         </form>
-
-
-        <?php
+<?php
         $total_pages = $loop->max_num_pages;
         if ($total_pages > 1) {
             $current_page = max(1, $paged);
@@ -305,4 +326,21 @@ function inventory_update_page_callback()
 
     // Reset Query
     wp_reset_postdata();
+}
+
+function search_by_sku($search, $wp_query)
+{
+    global $wpdb;
+    if (!$search)
+        return $search;
+    $search = $search_query = $wp_query->query_vars['s'];
+    if (is_admin() && $wp_query->query_vars['post_type'] === 'product') {
+        $search = " AND (
+                ({$wpdb->posts}.post_title LIKE '%{$wpdb->esc_like($search_query)}%')
+                OR ({$wpdb->posts}.ID IN (
+                    SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_sku' AND meta_value LIKE '%{$wpdb->esc_like($search_query)}%'
+                ))
+            )";
+    }
+    return $search;
 }
