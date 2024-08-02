@@ -162,13 +162,13 @@ function inventory_update_page_callback()
     // Remove SKU search filter after query
     remove_filter('posts_search', 'search_by_sku', 10); ?>
 
-    <form method="get" class="inventory-update-search-form">
-        <input type="hidden" name="post_type" value="product">
-        <input type="hidden" name="page" value="inventory-update">
-        <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products by Title, SKU...">
-
-        <select name="product_cat">
-            <option value="">Filter by category</option>
+<form method="get" class="inventory-update-search-form">
+    <input type="hidden" name="post_type" value="product">
+    <input type="hidden" name="page" value="inventory-update">
+    <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products by Title, SKU...">
+    
+    <select name="product_cat">
+        <option value="">Filter by category</option>
             <?php
             $categories = get_terms('product_cat', array('hide_empty' => false));
             foreach ($categories as $category) {
@@ -176,11 +176,14 @@ function inventory_update_page_callback()
             }
             ?>
         </select>
-
+        
         <input type="submit" value="Search" class="button">
     </form>
+    <div class="inventory-ajax-preloader">
+        <img src="<?php echo PLUGIN_ENQUEUE_PATH.'admin/images/preloader.gif'; ?>" alt="">
+    </div>
     <div class="inventory-stock-sync">
-        <a href="javascript:void(0);" class="button" id="sync-virtual-defalut">Sync</a>
+        <a href="javascript:void(0);" class="button" id="sync-virtual-defalut">Sync All</a>
         <a href="javascript:void(0);" class="button" id="sync-physical-virtual">Copy Physical -> Virtual</a>
     </div>
 
@@ -221,9 +224,11 @@ function inventory_update_page_callback()
                                 <?php if ($product_type === 'variable') :
                                     // Input field for the whole product
                                     // $product_physical_stock = get_post_meta($product_id, '_physical_stock', true); 
-                                    ?>
+                                ?>
                                     <!-- <div>
-                                        <input type="number" name="inventory[<?php //echo $product_id; ?>]" value="<?php //echo $product_physical_stock; ?>">
+                                        <input type="number" name="inventory[<?php //echo $product_id; 
+                                                                                ?>]" value="<?php //echo $product_physical_stock; 
+                                                                                                                    ?>">
                                     </div> -->
                                     <?php foreach ($available_variations as $variation) {
                                         $variation_id = $variation['variation_id'];
@@ -331,16 +336,106 @@ function inventory_update_page_callback()
 function search_by_sku($search, $wp_query)
 {
     global $wpdb;
+
+    // Return early if no search term
     if (!$search)
         return $search;
-    $search = $search_query = $wp_query->query_vars['s'];
+
+    // Get the search query
+    $search_query = $wp_query->query_vars['s'];
+
     if (is_admin() && $wp_query->query_vars['post_type'] === 'product') {
+        // Search for products with matching title or SKU
         $search = " AND (
-                ({$wpdb->posts}.post_title LIKE '%{$wpdb->esc_like($search_query)}%')
-                OR ({$wpdb->posts}.ID IN (
-                    SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_sku' AND meta_value LIKE '%{$wpdb->esc_like($search_query)}%'
-                ))
-            )";
+            ({$wpdb->posts}.post_title LIKE '%{$wpdb->esc_like($search_query)}%')
+            OR ({$wpdb->posts}.ID IN (
+                SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_sku' AND meta_value LIKE '%{$wpdb->esc_like($search_query)}%'
+            ))
+            OR ({$wpdb->posts}.ID IN (
+                SELECT p.post_parent FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                WHERE pm.meta_key = '_sku' AND pm.meta_value LIKE '%{$wpdb->esc_like($search_query)}%'
+                AND p.post_type = 'product_variation'
+            ))
+        )";
     }
+
     return $search;
 }
+
+
+// Handle syncing virtual stock to default stock
+function sync_virtual_to_default()
+{
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Unauthorized'));
+    }
+
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+    );
+
+    $query = new WP_Query($args);
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) : $query->the_post();
+            global $product;
+            $product_id = $product->get_id();
+            if ($product->is_type('variable')) {
+                $available_variations = $product->get_available_variations();
+                foreach ($available_variations as $variation) {
+                    $variation_id = $variation['variation_id'];
+                    $virtual_stock = get_post_meta($variation_id, '_virtual_variation_inventory', true);
+                    update_post_meta($variation_id, '_stock', intval($virtual_stock));
+                }
+            } else {
+                $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
+                update_post_meta($product_id, '_stock', intval($virtual_stock));
+            }
+        endwhile;
+        wp_reset_postdata();
+        wp_send_json_success(array('message' => 'Virtual stock synced to default stock successfully.'));
+    } else {
+        wp_send_json_error(array('message' => 'No products found.'));
+    }
+}
+add_action('wp_ajax_sync_virtual_to_default', 'sync_virtual_to_default');
+
+// Handle syncing physical stock to virtual stock
+function sync_physical_to_virtual()
+{
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Unauthorized'));
+    }
+
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+    );
+
+    $query = new WP_Query($args);
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) : $query->the_post();
+            global $product;
+            $product_id = $product->get_id();
+            if ($product->is_type('variable')) {
+                $available_variations = $product->get_available_variations();
+                foreach ($available_variations as $variation) {
+                    $variation_id = $variation['variation_id'];
+                    $physical_stock = get_post_meta($variation_id, '_physical_variation_inventory', true);
+                    update_post_meta($variation_id, '_virtual_variation_inventory', intval($physical_stock));
+                }
+            } else {
+                $physical_stock = get_post_meta($product_id, '_physical_stock', true);
+                update_post_meta($product_id, '_virtual_stock', intval($physical_stock));
+            }
+        endwhile;
+        wp_reset_postdata();
+        wp_send_json_success(array('message' => 'Physical stock synced to virtual stock successfully.'));
+    } else {
+        wp_send_json_error(array('message' => 'No products found.'));
+    }
+}
+add_action('wp_ajax_sync_physical_to_virtual', 'sync_physical_to_virtual');
