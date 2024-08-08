@@ -141,7 +141,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 update_post_meta($product_id, '_physical_stock', $new_physical_stock);
 
                 //if an order is directly set from “Devis” (not listed in the parameters Inventory Setting) to “Terminé” (completed) which is listed in PHysical Stock, then both Physical and Virtual stock should be decreased.
-                if (!in_array($old_status, $virtual_status_list) && $new_status == 'completed') {
+                if (!in_array($old_status, $virtual_status_list) && in_array($new_status, $physical_status_list)) {
                     $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
                     $virtual_stock = (int)$virtual_stock;
                     $new_virtual_stock = max(0, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
@@ -164,7 +164,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
 
                     //if an order is directly set from “Devis” (not listed in the parameters Inventory Setting) to “Terminé” (completed) which is listed in PHysical Stock, then both Physical and Virtual stock should be decreased.
-                    if (!in_array($old_status, $virtual_status_list) && $new_status == 'completed') {
+                    if (!in_array($old_status, $virtual_status_list) && in_array($new_status, $physical_status_list)) {
                         $virtual_stock = get_post_meta($variation_id, '_virtual_variation_inventory', true);
                         $virtual_stock = (int)$virtual_stock;
                         $new_virtual_stock = max(0, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
