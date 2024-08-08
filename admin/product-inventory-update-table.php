@@ -72,14 +72,27 @@ function add_theme_caps()
 add_action('admin_init', 'add_theme_caps');
 
 
+// function add_custom_submenu()
+// {
+//     add_submenu_page(
+//         'edit.php?post_type=product', // Parent slug
+//         'Inventory Update Page',        // Page title
+//         'Inventory Update',             // Menu title
+//         'manage_options',             // Capability
+//         'inventory-update',             // Menu slug
+//         'inventory_update_page_callback' // Callback function
+//     );
+// }
+// add_action('admin_menu', 'add_custom_submenu');
+
 function add_custom_submenu()
 {
     add_submenu_page(
         'edit.php?post_type=product', // Parent slug
-        'Inventory Update Page',        // Page title
-        'Inventory Update',             // Menu title
-        'manage_options',             // Capability
-        'inventory-update',             // Menu slug
+        'Inventory Update Page',      // Page title
+        'Inventory Update',           // Menu title
+        'read_write_physical_stock_inventory', // Capability required to access the submenu
+        'inventory-update',           // Menu slug
         'inventory_update_page_callback' // Callback function
     );
 }

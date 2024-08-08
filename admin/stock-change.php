@@ -52,7 +52,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
             $quantity = $item->get_quantity();
             $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
             
-            $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+            $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
             $products = wc_get_product($product_id);
             if ($product->is_type('simple')) {
                 $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
@@ -62,7 +62,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 }
 
                 $virtual_stock = (int)$virtual_stock;
-                $new_virtual_stock = max(0, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
+                $new_virtual_stock = max(-99999, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
                 update_post_meta($product_id, '_virtual_stock', $new_virtual_stock);
                 update_post_meta($product_id, '_stock', $new_virtual_stock);
             } elseif ($products->get_type() == 'variable') {
@@ -70,10 +70,10 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 $quantity = $item->get_quantity();
                 $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                 
-                $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                 $_virtual_variation_inventory = get_post_meta($variation_id, '_virtual_variation_inventory', true);
                 if ($_virtual_variation_inventory && $_virtual_variation_inventory > 0) {
-                    $new_inventory = max(0, $_virtual_variation_inventory - $remaining_quantity);
+                    $new_inventory = max(-99999, $_virtual_variation_inventory - $remaining_quantity);
                     update_post_meta($variation_id, '_virtual_variation_inventory', $new_inventory);
                     update_post_meta($variation_id, '_stock', $new_inventory);
                 }
@@ -90,7 +90,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
             $quantity = $item->get_quantity();
             $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
             
-            $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+            $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
             if ($product->is_type('simple')) {
                 $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
 
@@ -127,7 +127,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
             $quantity = $item->get_quantity();
             $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
             
-            $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+            $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
             $products = wc_get_product($product_id);
             if ($product->is_type('simple')) {
                 $physical_stock = get_post_meta($product_id, '_physical_stock', true);
@@ -137,14 +137,14 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 }
 
                 $physical_stock = (int)$physical_stock;
-                $new_physical_stock = max(0, $physical_stock - $remaining_quantity); // Ensure stock doesn't go below 0
+                $new_physical_stock = max(-99999, $physical_stock - $remaining_quantity); // Ensure stock doesn't go below 0
                 update_post_meta($product_id, '_physical_stock', $new_physical_stock);
 
                 //if an order is directly set from “Devis” (not listed in the parameters Inventory Setting) to “Terminé” (completed) which is listed in PHysical Stock, then both Physical and Virtual stock should be decreased.
                 if (!in_array($old_status, $virtual_status_list) && in_array($new_status, $physical_status_list)) {
                     $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
                     $virtual_stock = (int)$virtual_stock;
-                    $new_virtual_stock = max(0, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_virtual_stock = max(-99999, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($product_id, '_virtual_stock', $new_virtual_stock);
                     update_post_meta($product_id, '_stock', $new_virtual_stock);
                 }
@@ -153,21 +153,21 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 $quantity = $item->get_quantity();
                 $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                 
-                $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
-                $_physical_variation_inventory = get_post_meta($variation_id, '_physical_variation_inventory', true);
+                $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
+                $_physical_variation_inventory = (int)get_post_meta($variation_id, '_physical_variation_inventory', true);
                 if ($_physical_variation_inventory && $_physical_variation_inventory > 0) {
-                    $new_inventory = max(0, $_physical_variation_inventory - $remaining_quantity);
+                    $new_inventory = max(-99999, $_physical_variation_inventory - $remaining_quantity);
                     update_post_meta($variation_id, '_physical_variation_inventory', $new_inventory);
 
                     $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
-                    $new_physical_inventory = max(0, $_physical_inventory - $remaining_quantity);
+                    $new_physical_inventory = max(-99999, $_physical_inventory - $remaining_quantity);
                     update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
 
                     //if an order is directly set from “Devis” (not listed in the parameters Inventory Setting) to “Terminé” (completed) which is listed in PHysical Stock, then both Physical and Virtual stock should be decreased.
                     if (!in_array($old_status, $virtual_status_list) && in_array($new_status, $physical_status_list)) {
                         $virtual_stock = get_post_meta($variation_id, '_virtual_variation_inventory', true);
                         $virtual_stock = (int)$virtual_stock;
-                        $new_virtual_stock = max(0, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
+                        $new_virtual_stock = max(-99999, $virtual_stock - $remaining_quantity); // Ensure stock doesn't go below 0
                         update_post_meta($variation_id, '_virtual_variation_inventory', $new_virtual_stock);
                         update_post_meta($variation_id, '_stock', $new_virtual_stock);
                     }
@@ -193,13 +193,13 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
     //                 continue; // Skip if $physical_stock is empty, not numeric, or less than 0
     //             }
     //             $physical_stock = (int)$physical_stock;
-    //             $new_physical_stock = max(0, $physical_stock + $quantity); // Ensure stock doesn't go below 0
+    //             $new_physical_stock = max(-99999, $physical_stock + $quantity); // Ensure stock doesn't go below 0
     //             update_post_meta($product_id, '_physical_stock', $new_physical_stock);
 
 
     //             $virtual_stock = get_post_meta($product_id, '_virtual_stock', true);
     //             $virtual_stock = (int)$virtual_stock;
-    //             $new_virtual_stock = max(0, $virtual_stock + $quantity); // Ensure stock doesn't go below 0
+    //             $new_virtual_stock = max(-99999, $virtual_stock + $quantity); // Ensure stock doesn't go below 0
     //             update_post_meta($product_id, '_virtual_stock', $new_virtual_stock);
     //             update_post_meta($product_id, '_stock', $new_virtual_stock);
     //         } elseif ($products->get_type() == 'variable') {
@@ -207,16 +207,16 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
     //             $quantity = $item->get_quantity();
 
     //             $_virtual_variation_inventory = get_post_meta($variation_id, '_virtual_variation_inventory', true);
-    //             $new_inventory = max(0, $_virtual_variation_inventory + $quantity);
+    //             $new_inventory = max(-99999, $_virtual_variation_inventory + $quantity);
     //             update_post_meta($variation_id, '_virtual_variation_inventory', $new_inventory);
     //             update_post_meta($variation_id, '_stock', $new_inventory);
 
     //             $_physical_variation_inventory = get_post_meta($variation_id, '_physical_variation_inventory', true);
-    //             $new_inventory_physical = max(0, $_physical_variation_inventory + $quantity);
+    //             $new_inventory_physical = max(-99999, $_physical_variation_inventory + $quantity);
     //             update_post_meta($variation_id, '_physical_variation_inventory', $new_inventory_physical);
 
     //             $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
-    //             $new_physical_inventory = max(0, $_physical_inventory + $quantity);
+    //             $new_physical_inventory = max(-99999, $_physical_inventory + $quantity);
     //             update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
     //         }
     //     }
@@ -231,7 +231,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 $quantity = $item->get_quantity();
                 $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                 
-                $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                 $products = wc_get_product($product_id);
                 if ($product->is_type('simple')) {
                     $physical_stock = get_post_meta($product_id, "_physical_stock", true);
@@ -241,21 +241,21 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     }
 
                     $stock = (int)$physical_stock;
-                    $new_stock = max(0, $stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_stock = max(-99999, $stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($product_id, "_physical_stock", $new_stock);
                 } elseif ($products->get_type() == 'variable') {
                     $variation_id = $item->get_variation_id();
                     $quantity = $item->get_quantity();
                     $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                     
-                    $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                    $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                     $_physical_variation_inventory = get_post_meta($variation_id, '_physical_variation_inventory', true);
                     $stock = (int)$_physical_variation_inventory;
-                    $new_stock = max(0, $stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_stock = max(-99999, $stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($variation_id, "_physical_variation_inventory", $new_stock);
 
-                    $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
-                    $new_physical_inventory = max(0, $_physical_inventory + $remaining_quantity);
+                    $_physical_inventory = (int)get_post_meta($product_id, '_physical_stock', true);
+                    $new_physical_inventory = max(-99999, $_physical_inventory + $remaining_quantity);
                     update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
                 }
             }
@@ -267,7 +267,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 $quantity = $item->get_quantity();
                 $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                 
-                $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                 $products = wc_get_product($product_id);
                 if ($product->is_type('simple')) {
                     $physical_stock = get_post_meta($product_id, "_physical_stock", true);
@@ -278,14 +278,14 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     }
 
                     $physical_stock = (int)$physical_stock;
-                    $new_physical_stock = max(0, $physical_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_physical_stock = max(-99999, $physical_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($product_id, "_physical_stock", $new_physical_stock);
 
                     if (empty($virtual_stock) || !is_numeric($virtual_stock) || $virtual_stock < 0) {
                         continue; // Skip if stock is empty, not numeric, or less than 0
                     }
                     $virtual_stock = (int)$virtual_stock;
-                    $new_virtual_stock = max(0, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_virtual_stock = max(-99999, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($product_id, "_virtual_stock", $new_virtual_stock);
                     update_post_meta($product_id, "_stock", $new_virtual_stock);
                 } elseif ($products->get_type() == 'variable') {
@@ -294,20 +294,20 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     $quantity = $item->get_quantity();
                     $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                     
-                    $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                    $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                     $physical_stock = get_post_meta($variation_id, "_physical_variation_inventory", true);
                     $physical_stock = (int)$physical_stock;
-                    $new_physical_stock = max(0, $physical_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_physical_stock = max(-99999, $physical_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($variation_id, "_physical_variation_inventory", $new_physical_stock);
 
-                    $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
-                    $new_physical_inventory = max(0, $_physical_inventory + $remaining_quantity);
+                    $_physical_inventory = (int)get_post_meta($product_id, '_physical_stock', true);
+                    $new_physical_inventory = max(-99999, $_physical_inventory + $remaining_quantity);
                     update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
 
 
                     $virtual_stock = get_post_meta($variation_id, "_virtual_variation_inventory", true);
                     $virtual_stock = (int)$virtual_stock;
-                    $new_virtual_stock = max(0, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_virtual_stock = max(-99999, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($variation_id, "_virtual_variation_inventory", $new_virtual_stock);
                     update_post_meta($variation_id, "_stock", $new_virtual_stock);
                 }
@@ -322,7 +322,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                 $quantity = $item->get_quantity();
                 $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                 
-                $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                 $products = wc_get_product($product_id);
                 if ($product->is_type('simple')) {
                     $virtual_stock = get_post_meta($product_id, "_virtual_stock", true);
@@ -331,7 +331,7 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                         continue; // Skip if stock is empty, not numeric, or less than 0
                     }
                     $virtual_stock = (int)$virtual_stock;
-                    $new_virtual_stock = max(0, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_virtual_stock = max(-99999, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($product_id, "_virtual_stock", $new_virtual_stock);
                     update_post_meta($product_id, "_stock", $new_virtual_stock);
                 } elseif ($products->get_type() == 'variable') {
@@ -339,10 +339,10 @@ function update_stock_on_order_status_change($order_id, $old_status, $new_status
                     $quantity = $item->get_quantity();
                     $qty_refunded = absint($item->get_meta('_restock_refunded_items', true));
                     
-                    $remaining_quantity = $quantity - abs($qty_refunded); // Calculate remaining quantity
+                    $remaining_quantity = $quantity - $qty_refunded; // Calculate remaining quantity
                     $virtual_stock = get_post_meta($variation_id, "_virtual_variation_inventory", true);
                     $virtual_stock = (int)$virtual_stock;
-                    $new_virtual_stock = max(0, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
+                    $new_virtual_stock = max(-99999, $virtual_stock + $remaining_quantity); // Ensure stock doesn't go below 0
                     update_post_meta($variation_id, "_virtual_variation_inventory", $new_virtual_stock);
                     update_post_meta($variation_id, "_stock", $new_virtual_stock);
                 }
@@ -418,12 +418,12 @@ function custom_refund_and_update_inventory($order_id, $refund_id)
             $default_variation_stock = get_post_meta($variation_id, "_stock", true);
 
             // Update the virtual variation inventory
-            // $new_virtual_inventory = max(0, (int)$_virtual_variation_inventory + $quantity_refunded);
+            // $new_virtual_inventory = max(-99999, (int)$_virtual_variation_inventory + $quantity_refunded);
             // update_post_meta($variation_id, '_virtual_variation_inventory', $new_virtual_inventory);
             update_post_meta($variation_id, '_virtual_variation_inventory', $default_variation_stock);
 
             // Update the physical variation inventory
-            // $new_physical_inventory = max(0, (int)$_physical_variation_inventory + $quantity_refunded);
+            // $new_physical_inventory = max(-99999, (int)$_physical_variation_inventory + $quantity_refunded);
             // update_post_meta($variation_id, '_physical_variation_inventory', $new_physical_inventory);
             update_post_meta($variation_id, '_physical_variation_inventory', $default_variation_stock);
 
@@ -432,7 +432,7 @@ function custom_refund_and_update_inventory($order_id, $refund_id)
 
             // Update the parent product's physical stock
             $_physical_inventory = get_post_meta($product_id, '_physical_stock', true);
-            $new_physical_inventory = max(0, (int)$_physical_inventory + $quantity_refunded);
+            $new_physical_inventory = max(-99999, (int)$_physical_inventory + $quantity_refunded);
             update_post_meta($product_id, '_physical_stock', $new_physical_inventory);
         }
     }

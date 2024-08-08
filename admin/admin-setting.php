@@ -1,8 +1,4 @@
 <?php
-
-
-
-
 // Add Physical Stock field to the product general settings tab
 add_action('woocommerce_product_options_inventory_product_data', 'add_physical_stock_field');
 function add_physical_stock_field()
@@ -13,10 +9,6 @@ function add_physical_stock_field()
         'desc_tip' => true,
         'description' => __('Enter the physical stock quantity.', 'woocommerce'),
         'type' => 'number',
-        // 'custom_attributes' => array(
-        //     'step' => 'any',
-        //     'min' => '0'
-        // )
     ));
 }
 
@@ -176,10 +168,6 @@ function custom_variation_inventory_field($loop, $variation_data, $variation)
             'description' => __('Enter the physical inventory for this variation.', 'woocommerce'),
             'value' => get_post_meta($variation->ID, '_physical_variation_inventory', true),
             'type' => 'number',
-            // 'custom_attributes' => array(
-            //     'step' => '1',
-            //     'min' => '0'
-            // )
         )
     );
     woocommerce_wp_text_input(
@@ -190,10 +178,6 @@ function custom_variation_inventory_field($loop, $variation_data, $variation)
             'description' => __('Enter the virtual inventory for this variation.', 'woocommerce'),
             'value' => get_post_meta($variation->ID, '_virtual_variation_inventory', true),
             'type' => 'number',
-            // 'custom_attributes' => array(
-            //     'step' => '1',
-            //     'min' => '0'
-            // )
         )
     );
 }
@@ -236,10 +220,6 @@ function add_virtual_stock_custom_field()
             'desc_tip' => 'true',
             'description' => __('Enter the virtual stock quantity for this product.', 'woocommerce'),
             'type' => 'number',
-            // 'custom_attributes' => array(
-            //     'step' => 'any',
-            //     'min' => '0'
-            // )
         )
     );
 
