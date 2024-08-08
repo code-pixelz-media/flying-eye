@@ -195,7 +195,7 @@ function inventory_update_page_callback()
                     <tr>
                         <th>Product ID</th>
                         <th>Product Name</th>
-                        <th>Physical Inventory</th>
+                        <th>Physical Stock</th>
                         <th>Default Stock</th>
                         <th>Virtual Stock</th>
                     </tr>

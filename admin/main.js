@@ -22,7 +22,6 @@ jQuery(document).ready(function () {
         product_id: product_id,
       },
       success: function (response) {
-        // console.log('response',response);
         if (response.success) {
           jQuery(
             "#inventory_number_product_list_" + response.data.product
@@ -79,11 +78,6 @@ jQuery(document).ready(function ($) {
 jQuery(document).ready(function ($) {
   // Sync virtual stock values to default stock inputs
   $("#sync-virtual-defalut").on("click", function () {
-    // $('input[name^="virtual_inventory"]').each(function () {
-    //   var virtualStock = $(this).val();
-    //   var id = $(this).attr("name").match(/\d+/)[0];
-    //   $('input[name="default_inventory[' + id + ']"]').val(virtualStock);
-    // });
     let text = "This action will modify all products inventory. Are you sure?";
     if (confirm(text) == true) {
       $.ajax({
@@ -92,15 +86,14 @@ jQuery(document).ready(function ($) {
         data: {
           action: "sync_virtual_to_default",
         },
-        beforeSend: function() {
-          // setting a timeout
-         jQuery('.inventory-ajax-preloader').css('display','block');
-      },
-      complete: function() {
-        jQuery('.inventory-ajax-preloader').css('display','none');
-    },
+        beforeSend: function () {
+          jQuery(".inventory-ajax-preloader").css("display", "block");
+        },
+        complete: function () {
+          jQuery(".inventory-ajax-preloader").css("display", "none");
+        },
         success: function (response) {
-          console.log(response.data.message);
+          // console.log(response.data.message);
           location.reload(); // Reload the page to reflect changes
         },
       });
@@ -109,13 +102,8 @@ jQuery(document).ready(function ($) {
 
   // Sync physical stock values to virtual stock inputs
   $("#sync-physical-virtual").on("click", function () {
-    // $('input[name^="inventory"]').each(function () {
-    //   var physicalStock = $(this).val();
-    //   var id = $(this).attr("name").match(/\d+/)[0];
-    //   $('input[name="virtual_inventory[' + id + ']"]').val(physicalStock);
-    // });
-
-    let confirmText = "This action will modify all products inventory. Are you sure?";
+    let confirmText =
+      "This action will modify all products inventory. Are you sure?";
     if (confirm(confirmText) == true) {
       $.ajax({
         url: admin_ajax.ajaxurl,
@@ -123,8 +111,14 @@ jQuery(document).ready(function ($) {
         data: {
           action: "sync_physical_to_virtual",
         },
+        beforeSend: function () {
+          jQuery(".inventory-ajax-preloader").css("display", "block");
+        },
+        complete: function () {
+          jQuery(".inventory-ajax-preloader").css("display", "none");
+        },
         success: function (response) {
-          console.log(response.data.message);
+          // console.log(response.data.message);
           location.reload(); // Reload the page to reflect changes
         },
       });
