@@ -72,31 +72,31 @@ function add_theme_caps()
 add_action('admin_init', 'add_theme_caps');
 
 
-// function add_custom_submenu()
-// {
-//     add_submenu_page(
-//         'edit.php?post_type=product', // Parent slug
-//         'Inventory Update Page',        // Page title
-//         'Inventory Update',             // Menu title
-//         'manage_options',             // Capability
-//         'inventory-update',             // Menu slug
-//         'inventory_update_page_callback' // Callback function
-//     );
-// }
-// add_action('admin_menu', 'add_custom_submenu');
-
 function add_custom_submenu()
 {
+    $capability = get_current_user_capability();
     add_submenu_page(
         'edit.php?post_type=product', // Parent slug
-        'Inventory Update Page',      // Page title
-        'Inventory Update',           // Menu title
-        'read_write_physical_stock_inventory', // Capability required to access the submenu
-        'inventory-update',           // Menu slug
+        'Inventory Update Page',        // Page title
+        'Inventory Update',             // Menu title
+        $capability,             // Capability
+        'inventory-update',             // Menu slug
         'inventory_update_page_callback' // Callback function
     );
 }
 add_action('admin_menu', 'add_custom_submenu');
+
+// Function to determine the correct capability for the current user
+function get_current_user_capability()
+{
+    if (current_user_can('read_write_physical_stock_inventory')) {
+        return 'read_write_physical_stock_inventory';
+    } elseif (current_user_can('read_physical_stock_inventory')) {
+        return 'read_physical_stock_inventory';
+    }
+
+    return false; // Return false if the user has none of the required capabilities
+}
 
 function inventory_update_page_callback()
 {
@@ -106,8 +106,12 @@ function inventory_update_page_callback()
         exit;
     }
 
+    // Check if the user has the capability to update inventory
+    $can_update_inventory = current_user_can('read_write_physical_stock_inventory');
+    $can_update_inventory_read = current_user_can('read_physical_stock_inventory');
+
     // Handle form submission
-    if (isset($_POST['update_inventory']) && check_admin_referer('update_inventory_nonce')) {
+    if (($can_update_inventory || $can_update_inventory_read) && isset($_POST['update_inventory']) && check_admin_referer('update_inventory_nonce')) {
         if (isset($_POST['inventory']) && is_array($_POST['inventory'])) {
             foreach ($_POST['inventory'] as $id => $stock) {
                 $product = wc_get_product($id);
@@ -175,13 +179,13 @@ function inventory_update_page_callback()
     // Remove SKU search filter after query
     remove_filter('posts_search', 'search_by_sku', 10); ?>
 
-<form method="get" class="inventory-update-search-form">
-    <input type="hidden" name="post_type" value="product">
-    <input type="hidden" name="page" value="inventory-update">
-    <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products by Title, SKU...">
-    
-    <select name="product_cat">
-        <option value="">Filter by category</option>
+    <form method="get" class="inventory-update-search-form">
+        <input type="hidden" name="post_type" value="product">
+        <input type="hidden" name="page" value="inventory-update">
+        <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search Products by Title, SKU...">
+
+        <select name="product_cat">
+            <option value="">Filter by category</option>
             <?php
             $categories = get_terms('product_cat', array('hide_empty' => false));
             foreach ($categories as $category) {
@@ -189,17 +193,18 @@ function inventory_update_page_callback()
             }
             ?>
         </select>
-        
+
         <input type="submit" value="Search" class="button">
     </form>
     <div class="inventory-ajax-preloader">
-        <img src="<?php echo PLUGIN_ENQUEUE_PATH.'admin/images/preloader.gif'; ?>" alt="">
+        <img src="<?php echo PLUGIN_ENQUEUE_PATH . 'admin/images/preloader.gif'; ?>" alt="">
     </div>
-    <div class="inventory-stock-sync">
-        <a href="javascript:void(0);" class="button" id="sync-virtual-defalut">Sync All</a>
-        <a href="javascript:void(0);" class="button" id="sync-physical-virtual">Copy Physical -> Virtual</a>
-    </div>
-
+    <?php if (current_user_can( 'manage_options' )) : ?>
+        <div class="inventory-stock-sync">
+            <a href="javascript:void(0);" class="button" id="sync-virtual-defalut">Sync All</a>
+            <a href="javascript:void(0);" class="button" id="sync-physical-virtual">Copy Physical -> Virtual</a>
+        </div>
+    <?php endif; ?>
     <?php if ($loop->have_posts()) { ?>
         <form method="post" class="shop-inventory-form">
             <?php wp_nonce_field('update_inventory_nonce'); ?>
@@ -234,15 +239,7 @@ function inventory_update_page_callback()
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($product_type === 'variable') :
-                                    // Input field for the whole product
-                                    // $product_physical_stock = get_post_meta($product_id, '_physical_stock', true); 
-                                ?>
-                                    <!-- <div>
-                                        <input type="number" name="inventory[<?php //echo $product_id; 
-                                                                                ?>]" value="<?php //echo $product_physical_stock; 
-                                                                                                                    ?>">
-                                    </div> -->
+                                <?php if ($product_type === 'variable') : ?>
                                     <?php foreach ($available_variations as $variation) {
                                         $variation_id = $variation['variation_id'];
                                         $attributes = implode(', ', $variation['attributes']); ?>
@@ -252,7 +249,11 @@ function inventory_update_page_callback()
                                     <?php }
 
                                 else : ?>
-                                    <input type="number" name="inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_physical_stock', true); ?>">
+                                    <?php if ($can_update_inventory) : ?>
+                                        <input type="number" name="inventory[<?php echo $product_id; ?>]" value="<?php echo get_post_meta($product_id, '_physical_stock', true); ?>">
+                                    <?php else : ?>
+                                        <span><?php echo get_post_meta($product_id, '_physical_stock', true); ?></span>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -285,7 +286,9 @@ function inventory_update_page_callback()
                     <?php endwhile; ?>
                 </tbody>
             </table>
-            <input type="submit" name="update_inventory" value="Update" class="button button-primary button-large">
+            <?php //if ($can_update_inventory) : ?>
+                <input type="submit" name="update_inventory" value="Update" class="button button-primary button-large">
+            <?php //endif; ?>
         </form>
 <?php
         $total_pages = $loop->max_num_pages;
